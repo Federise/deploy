@@ -1,0 +1,20 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "federise-gateway",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-02-04",
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{ "binding": "KV", "id": "REPLACE_WITH_KV_ID" }
+	],
+	"r2_buckets": [
+		{ "binding": "R2", "bucket_name": "federise-objects" },
+		{ "binding": "R2_PUBLIC", "bucket_name": "federise-objects-public" }
+	],
+	"vars": {
+		"BOOTSTRAP_API_KEY": "PASTE_BOOTSTRAP_API_KEY_HERE",
+		"PUBLIC_DOMAIN": "https://cdn.example.com"
+	}
+}

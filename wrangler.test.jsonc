@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "federise-gateway-test",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-02-04",
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{ "binding": "KV", "id": "test-namespace" }
+	],
+	"r2_buckets": [
+		{ "binding": "R2", "bucket_name": "test-federise-objects" },
+		{ "binding": "R2_PUBLIC", "bucket_name": "test-federise-objects-public" }
+	],
+	"vars": {
+		"BOOTSTRAP_API_KEY": "testbootstrapkey123",
+		"PUBLIC_DOMAIN": "https://cdn.example.com",
+		"R2_ACCOUNT_ID": "test-account-id",
+		"R2_ACCESS_KEY_ID": "test-access-key",
+		"R2_SECRET_ACCESS_KEY": "test-secret-key"
+	}
+}
