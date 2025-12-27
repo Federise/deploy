@@ -14,7 +14,7 @@
 		{ "binding": "R2_PUBLIC", "bucket_name": "federise-objects-public" }
 	],
 	"vars": {
-		"BOOTSTRAP_API_KEY": "PASTE_BOOTSTRAP_API_KEY_HERE",
-		"PUBLIC_DOMAIN": "https://cdn.example.com"
+		"BOOTSTRAP_API_KEY": "PASTE_BOOTSTRAP_API_KEY_HERE"
+		// "PUBLIC_DOMAIN": "https://cdn.example.com" // Optional: Set custom domain for public blobs (defaults to worker URL)
 	}
 }

@@ -55,7 +55,8 @@ export class BlobGetEndpoint extends OpenAPIRoute {
 
     if (metadata.isPublic) {
       // Return custom domain URL for public blobs (permanent)
-      const publicDomain = c.env.PUBLIC_DOMAIN || "https://cdn.example.com";
+      // Default to worker's own URL if PUBLIC_DOMAIN not set
+      const publicDomain = c.env.PUBLIC_DOMAIN || new URL(c.req.url).origin;
       const url = `${publicDomain}/${r2Key}`;
 
       return {

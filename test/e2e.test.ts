@@ -617,7 +617,8 @@ describe("KV Gateway E2E Tests", () => {
       expect(data).toHaveProperty("metadata");
       expect(data.expiresAt).toBeUndefined();
       expect(data.metadata.isPublic).toBe(true);
-      expect(data.url).toContain("cdn.example.com");
+      // Should use worker URL (localhost in tests) when PUBLIC_DOMAIN not set
+      expect(data.url).toContain("localhost");
       expect(data.url).toContain("myapp:public-banner.jpg");
     });
 
