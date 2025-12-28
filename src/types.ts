@@ -28,7 +28,7 @@ export const PrincipalCreateResponse = z.object({
   secret: z.string(),
 });
 
-export const NamespaceValue = z.string().regex(/^[a-zA-Z0-9._~:-]+$/);
+export const NamespaceValue = z.string();
 
 export const KVEntry = z.object({
   key: z.string(),
