@@ -84,19 +84,9 @@ export const BlobMetadata = z.object({
   isPublic: z.boolean(),
 });
 
-// Request to initiate blob upload
-export const BlobUploadRequest = z.object({
-  namespace: NamespaceValue,
-  key: z.string(),
-  contentType: z.string(),
-  size: z.number().int().positive(),
-  isPublic: z.boolean().default(false),
-});
-
-// Response with presigned upload URL
+// Response after successful upload (metadata headers used for request)
 export const BlobUploadResponse = z.object({
-  uploadUrl: z.string().url(),
-  expiresAt: z.string().datetime(),
+  metadata: BlobMetadata,
 });
 
 // Request to get blob download URL

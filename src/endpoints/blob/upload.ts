@@ -1,31 +1,38 @@
-import { z } from "zod";
 import { OpenAPIRoute } from "chanfana";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { z } from "zod";
 import {
   type AppContext,
   AuthorizationHeader,
-  BlobUploadRequest,
-  BlobUploadResponse,
+  BlobMetadata,
   ErrorResponse,
 } from "../../types";
+
+// Response after successful upload
+const BlobUploadResponse = z.object({
+  metadata: BlobMetadata,
+});
 
 export class BlobUploadEndpoint extends OpenAPIRoute {
   schema = {
     tags: ["Blob Operations"],
-    summary: "Initiate blob upload and get presigned URL",
+    summary: "Upload a blob directly to storage",
     request: {
       headers: z.object({
         authorization: AuthorizationHeader,
+        "content-type": z.string(),
+        "x-blob-namespace": z.string().describe("Namespace for the blob"),
+        "x-blob-key": z.string().describe("Key/filename for the blob"),
+        "x-blob-public": z.string().optional().describe("Set to 'true' for public storage"),
       }),
-      body: {
-        content: { "application/json": { schema: BlobUploadRequest } },
-      },
     },
     responses: {
       "200": {
-        description: "Presigned upload URL generated",
+        description: "Blob uploaded successfully",
         content: { "application/json": { schema: BlobUploadResponse } },
+      },
+      "400": {
+        description: "Bad request",
+        content: { "application/json": { schema: ErrorResponse } },
       },
       "401": {
         description: "Unauthorized",
@@ -35,8 +42,33 @@ export class BlobUploadEndpoint extends OpenAPIRoute {
   };
 
   async handle(c: AppContext) {
-    const data = await this.getValidatedData<typeof this.schema>();
-    const { namespace, key, contentType, size, isPublic } = data.body;
+    const namespace = c.req.header("x-blob-namespace");
+    const key = c.req.header("x-blob-key");
+    const isPublic = c.req.header("x-blob-public") === "true";
+    const contentType = c.req.header("content-type") || "application/octet-stream";
+
+    if (!namespace || !key) {
+      return c.json({ code: 400, message: "Missing x-blob-namespace or x-blob-key header" }, 400);
+    }
+
+    // Get the raw body
+    const body = await c.req.arrayBuffer();
+    const size = body.byteLength;
+
+    if (size === 0) {
+      return c.json({ code: 400, message: "Empty file" }, 400);
+    }
+
+    // Select the appropriate bucket
+    const bucket = isPublic ? c.env.R2_PUBLIC : c.env.R2;
+    const r2Key = `${namespace}:${key}`;
+
+    // Upload to R2
+    await bucket.put(r2Key, body, {
+      httpMetadata: {
+        contentType,
+      },
+    });
 
     // Create metadata record in KV
     const metadata = {
@@ -51,33 +83,6 @@ export class BlobUploadEndpoint extends OpenAPIRoute {
     const kvKey = `__BLOB:${namespace}:${key}`;
     await c.env.KV.put(kvKey, JSON.stringify(metadata));
 
-    // Determine bucket name
-    const bucketName = isPublic ? "federise-objects-public" : "federise-objects";
-    const r2Key = `${namespace}:${key}`;
-
-    // Configure S3 client for R2
-    const s3Client = new S3Client({
-      region: "auto",
-      endpoint: `https://${c.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: c.env.R2_ACCESS_KEY_ID || "",
-        secretAccessKey: c.env.R2_SECRET_ACCESS_KEY || "",
-      },
-    });
-
-    // Generate presigned URL for upload (PUT method, 1 hour expiry)
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: r2Key,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
-
-    return {
-      uploadUrl,
-      expiresAt,
-    };
+    return c.json({ metadata });
   }
 }

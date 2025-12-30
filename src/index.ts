@@ -14,9 +14,11 @@ import { KVBulkGetEndpoint } from "./endpoints/kv/bulk-get";
 import { KVBulkSetEndpoint } from "./endpoints/kv/bulk-set";
 import { KVDumpEndpoint } from "./endpoints/kv/dump";
 import { BlobUploadEndpoint } from "./endpoints/blob/upload";
+import { BlobPresignUploadEndpoint } from "./endpoints/blob/presign-upload";
 import { BlobGetEndpoint } from "./endpoints/blob/get";
 import { BlobDeleteEndpoint } from "./endpoints/blob/delete";
 import { BlobListEndpoint } from "./endpoints/blob/list";
+import { registerBlobDownloadRoute } from "./endpoints/blob/download";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -25,12 +27,16 @@ app.use("*", (c, next) => {
   return cors({
     origin,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
-    exposeHeaders: ["Content-Length"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Blob-Namespace", "X-Blob-Key", "X-Blob-Public"],
+    exposeHeaders: ["Content-Length", "Content-Disposition"],
     maxAge: 86400,
     credentials: false,
   })(c, next);
 });
+
+// Register blob download route BEFORE auth middleware (uses URL-based auth via obscurity)
+registerBlobDownloadRoute(app);
+
 app.use("*", authMiddleware);
 
 const openapi = fromHono(app, {
@@ -56,6 +62,7 @@ openapi.post("/kv/dump", KVDumpEndpoint);
 
 // Blob routes
 openapi.post("/blob/upload", BlobUploadEndpoint);
+openapi.post("/blob/presign-upload", BlobPresignUploadEndpoint);
 openapi.post("/blob/get", BlobGetEndpoint);
 openapi.post("/blob/delete", BlobDeleteEndpoint);
 openapi.post("/blob/list", BlobListEndpoint);

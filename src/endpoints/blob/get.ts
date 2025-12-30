@@ -1,7 +1,5 @@
 import { z } from "zod";
 import { OpenAPIRoute } from "chanfana";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   type AppContext,
   AuthorizationHeader,
@@ -51,43 +49,15 @@ export class BlobGetEndpoint extends OpenAPIRoute {
     }
 
     const metadata = JSON.parse(metadataStr);
-    const r2Key = `${namespace}:${key}`;
 
-    if (metadata.isPublic) {
-      // Return custom domain URL for public blobs (permanent)
-      // Default to worker's own URL if PUBLIC_DOMAIN not set
-      const publicDomain = c.env.PUBLIC_DOMAIN || new URL(c.req.url).origin;
-      const url = `${publicDomain}/${r2Key}`;
+    // Build download URL through the gateway
+    const gatewayOrigin = new URL(c.req.url).origin;
+    const url = `${gatewayOrigin}/blob/download/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
 
-      return {
-        url,
-        metadata,
-        // No expiresAt for public URLs
-      };
-    } else {
-      // Generate presigned download URL for private blobs (1 hour expiry)
-      const s3Client = new S3Client({
-        region: "auto",
-        endpoint: `https://${c.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-        credentials: {
-          accessKeyId: c.env.R2_ACCESS_KEY_ID || "",
-          secretAccessKey: c.env.R2_SECRET_ACCESS_KEY || "",
-        },
-      });
-
-      const command = new GetObjectCommand({
-        Bucket: "federise-objects",
-        Key: r2Key,
-      });
-
-      const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-      const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
-
-      return {
-        url,
-        metadata,
-        expiresAt,
-      };
-    }
+    return {
+      url,
+      metadata,
+      // No expiry - gateway handles auth
+    };
   }
 }
